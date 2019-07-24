@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">GpsTracker</string>
+    <string name="title_activity_maps">Map</string>
+    <string name="no_tracks_string">No tracks.Lets create</string>
+    <string name="btn_text_start">START</string>
+    <string name="btn_text_stop">STOP</string>
+    <string name="distance_meter">Distance(meter)</string>
+    <string name="time_mm_ss">Time(mm:ss)</string>
+</resources>
