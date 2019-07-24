@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Chronometer;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -69,10 +70,10 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
 
     private Chronometer mChronometer;
 
-    private double distance=0;
+    private double distance = 0;
     private boolean isStarted = false;
-    private boolean isInBackground=false;
-    private int notificationId=1;
+    private boolean isInBackground = false;
+    private int notificationId = 1;
     private NotificationManagerCompat notificationManager;
 
 
@@ -89,7 +90,7 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
         btn_start_tracking = findViewById(R.id.btn_start_tracking);
         btn_start_tracking.setOnClickListener(this);
 
-        mChronometer= findViewById(R.id.txt_chronometer);
+        mChronometer = findViewById(R.id.txt_chronometer);
         textDistance = findViewById(R.id.txt_distance);
         trackingLayout = findViewById(R.id.info_layout);
 
@@ -103,21 +104,15 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
         myProgress.setCancelable(true);
         myProgress.show();
 
-        SupportMapFragment mapFragment
-                = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-
-        Objects.requireNonNull(mapFragment).getMapAsync(this::onMyMapReady);
+        initMap();
     }
 
-    private void onMyMapReady(GoogleMap googleMap) {
-        myMap = googleMap;
-
-        myMap.setOnMapLoadedCallback(() -> {
-            myProgress.dismiss();
-            askLocationPermission();
-        });
-
+    private void initMap(){
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        Objects.requireNonNull(mapFragment).getMapAsync(MapsActivity.this);
     }
+
+
 
     private void askLocationPermission() {
         int accessCoarsePermission
@@ -130,7 +125,7 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
             ActivityCompat.requestPermissions(this, permissions,
                     LOCATION_PERMISSION_REQUEST_CODE);
         } else {
-//            myMap.setMyLocationEnabled(true);
+            myMap.setMyLocationEnabled(true);
             getCurrentLocation();
         }
 
@@ -155,9 +150,7 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
     private String getEnabledLocationProvider() {
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
 
-        Criteria criteria = new Criteria();
-
-        String gpsProvider = Objects.requireNonNull(locationManager).getBestProvider(criteria, true);
+        String gpsProvider = Objects.requireNonNull(locationManager).getBestProvider(new Criteria(), true);
 
         boolean enabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
 
@@ -169,7 +162,6 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
         return gpsProvider;
     }
 
-    @SuppressLint("MissingPermission")
     private void getCurrentLocation() {
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
 
@@ -187,6 +179,11 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
 
         assert locationManager != null;
 
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, permissions,
+                    LOCATION_PERMISSION_REQUEST_CODE);
+            return;
+        }
         locationManager.requestLocationUpdates(
                 locationProvider,
                 MIN_TIME_BW_UPDATES_IN_MILLI_SECOND,
@@ -194,6 +191,8 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
 
             myLocation = locationManager
                     .getLastKnownLocation(locationProvider);
+
+
         if (myLocation != null) {
 
             startLatLon = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
@@ -244,18 +243,30 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
     @Override
     public void onProviderEnabled(String s) {
         Toast.makeText(this, "Provider Enabled", Toast.LENGTH_SHORT).show();
-        showWaitDialog(); }
+        try {
+            showWaitDialog();
+        }catch (WindowManager.BadTokenException e){
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public void onProviderDisabled(String s) {
         Toast.makeText(this, "ProvideDisabled", Toast.LENGTH_SHORT).show();
-        showSettingsDialog();
+        try {
+            showSettingsDialog();
+        }catch (WindowManager.BadTokenException e){
+            e.printStackTrace();
+        }
         btn_start_tracking.setVisibility(View.GONE);
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Toast.makeText(this, "onMapReady", Toast.LENGTH_SHORT).show();
+        myMap = googleMap;
+        myProgress.dismiss();
+        askLocationPermission();
     }
 
     private void showSettingsDialog(){
@@ -358,9 +369,7 @@ public class MapsActivity extends AppCompatActivity implements LocationListener,
         builder.setContentTitle(getString(R.string.app_name))
                 .setContentText("Tracking your activity")
                 .setSmallIcon(R.drawable.ic_launcher_background)
-                .setOngoing(true)
-                .setContentIntent(resultPendingIntent);
-
+                .setOngoing(true);
         notificationManager.notify(notificationId, builder.build());
 
     }
